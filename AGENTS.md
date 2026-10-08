@@ -104,3 +104,5 @@ Cliente (App Móvil / Web)
    - Reglas de Negocio: `RN01` al `RN04`.
    - Requisitos No Funcionales: `RNF01` al `RNF09`.
    - Historias de Usuario: `HU1` al `HU4`.
+4. **Flujo de Trabajo y Progreso:** Al iniciar, lee `docs/progreso.md`. Al terminar cada tarea, actualízalo.
+
