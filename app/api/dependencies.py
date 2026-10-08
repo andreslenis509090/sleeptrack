@@ -9,7 +9,7 @@ from typing import Annotated
 from fastapi import Depends, Header, HTTPException, status
 from supabase import Client
 
-from app.core.config import get_supabase_client
+from app.core.config import get_supabase_client, settings
 from app.core.exceptions import InvalidTokenError
 from app.repositories.sleep_record_repository import SleepRecordRepository
 from app.repositories.user_profile_repository import UserProfileRepository
@@ -37,7 +37,7 @@ def _get_supabase_client() -> Client | None:
 def get_user_profile_repository() -> UserProfileRepository:
     """Provee el repositorio de perfiles de usuario conectado a Supabase (RNF04)."""
     client = _get_supabase_client()
-    return UserProfileRepository(client=client)
+    return UserProfileRepository(client=client, is_test_mode=settings.is_testing_mode)
 
 
 def get_sleep_record_repository() -> SleepRecordRepository:
@@ -56,7 +56,11 @@ def get_auth_service(
 ) -> AuthService:
     """Provee el servicio de autenticación con Supabase Auth (RF01, RF02, RNF01, RNF02)."""
     client = _get_supabase_client()
-    return AuthService(client=client, profile_repo=profile_repo)
+    return AuthService(
+        client=client,
+        profile_repo=profile_repo,
+        is_test_mode=settings.is_testing_mode,
+    )
 
 
 def get_sleep_record_service(

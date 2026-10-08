@@ -109,7 +109,7 @@ def create_sleep_record(
 def get_sleep_record_by_date(
     fecha: date,
     service: Annotated[SleepRecordService, Depends(get_sleep_record_service)],
-    user_id: Annotated[int, Depends(get_current_user_id)],
+    user_id: Annotated[str, Depends(get_current_user_id)],
 ) -> SleepRecordResponse:
     """Permite al cliente móvil consultar si ya existe un registro para una fecha específica (RF08, RN01).
 
@@ -150,7 +150,7 @@ def update_sleep_record(
     id_registro: int,
     payload: SleepRecordUpdate,
     service: Annotated[SleepRecordService, Depends(get_sleep_record_service)],
-    user_id: Annotated[int, Depends(get_current_user_id)],
+    user_id: Annotated[str, Depends(get_current_user_id)],
 ) -> SleepRecordResponse:
     """Edita un registro existente para una fecha determinada (RF08).
 

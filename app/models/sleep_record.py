@@ -14,7 +14,7 @@ class RegistroSueno:
     """Entidad de dominio RegistroSueno según especificación del informe técnico."""
 
     id_registro: int | None
-    id_usuario: int
+    id_usuario: str
     fecha: date
     hora_acostarse: time
     hora_despertar: time
@@ -68,7 +68,7 @@ class RegistroSueno:
     @classmethod
     def crear(
         cls,
-        id_usuario: int,
+        id_usuario: str,
         fecha: date,
         hora_acostarse: time,
         hora_despertar: time,

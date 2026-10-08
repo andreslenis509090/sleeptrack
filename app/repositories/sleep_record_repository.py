@@ -40,7 +40,7 @@ class SleepRecordRepository:
 
         return RegistroSueno(
             id_registro=int(row["id_registro"]) if row.get("id_registro") is not None else None,
-            id_usuario=int(row["id_usuario"]),
+            id_usuario=str(row["id_usuario"]),
             fecha=fecha_val,
             hora_acostarse=hora_acostarse_val,
             hora_despertar=hora_despertar_val,
@@ -49,14 +49,14 @@ class SleepRecordRepository:
         )
 
     def get_by_user_and_date(
-        self, id_usuario: int, fecha: date
+        self, id_usuario: str, fecha: date
     ) -> RegistroSueno | None:
         """Consulta si existe un registro de sueño para un usuario y fecha específicos (RN01, RF08)."""
         if self.client is not None:
             response = (
                 self.client.table(self._table_name)
                 .select("*")
-                .eq("id_usuario", id_usuario)
+                .eq("id_usuario", str(id_usuario))
                 .eq("fecha", str(fecha))
                 .maybe_single()
                 .execute()
@@ -67,18 +67,18 @@ class SleepRecordRepository:
 
         # Fallback en memoria para tests aislados
         for row in self._in_memory_db.values():
-            if row["id_usuario"] == id_usuario and row["fecha"] == fecha:
+            if str(row["id_usuario"]) == str(id_usuario) and row["fecha"] == fecha:
                 return self._row_to_model(row)
         return None
 
-    def get_by_id(self, id_registro: int, id_usuario: int) -> RegistroSueno | None:
+    def get_by_id(self, id_registro: int, id_usuario: str) -> RegistroSueno | None:
         """Obtiene un registro por su identificador primario y usuario propietario."""
         if self.client is not None:
             response = (
                 self.client.table(self._table_name)
                 .select("*")
                 .eq("id_registro", id_registro)
-                .eq("id_usuario", id_usuario)
+                .eq("id_usuario", str(id_usuario))
                 .maybe_single()
                 .execute()
             )
@@ -87,14 +87,14 @@ class SleepRecordRepository:
             return None
 
         row = self._in_memory_db.get(id_registro)
-        if row and row["id_usuario"] == id_usuario:
+        if row and str(row["id_usuario"]) == str(id_usuario):
             return self._row_to_model(row)
         return None
 
     def create(self, registro: RegistroSueno) -> RegistroSueno:
         """Inserta un nuevo registro de sueño en Supabase aplicando la restricción única de RN01."""
         row_data = {
-            "id_usuario": registro.id_usuario,
+            "id_usuario": str(registro.id_usuario),
             "fecha": str(registro.fecha),
             "hora_acostarse": str(registro.hora_acostarse),
             "hora_despertar": str(registro.hora_despertar),
@@ -126,7 +126,7 @@ class SleepRecordRepository:
         self._auto_id += 1
         saved_row = {
             "id_registro": new_id,
-            "id_usuario": registro.id_usuario,
+            "id_usuario": str(registro.id_usuario),
             "fecha": registro.fecha,
             "hora_acostarse": registro.hora_acostarse,
             "hora_despertar": registro.hora_despertar,
@@ -153,7 +153,7 @@ class SleepRecordRepository:
                 self.client.table(self._table_name)
                 .update(row_data)
                 .eq("id_registro", registro.id_registro)
-                .eq("id_usuario", registro.id_usuario)
+                .eq("id_usuario", str(registro.id_usuario))
                 .execute()
             )
             if response and response.data:
@@ -161,7 +161,7 @@ class SleepRecordRepository:
             raise ValueError(f"Registro {registro.id_registro} no encontrado en Supabase para actualizar.")
 
         saved_row = self._in_memory_db.get(registro.id_registro)
-        if saved_row and saved_row["id_usuario"] == registro.id_usuario:
+        if saved_row and str(saved_row["id_usuario"]) == str(registro.id_usuario):
             saved_row.update(
                 {
                     "hora_acostarse": registro.hora_acostarse,
@@ -174,31 +174,31 @@ class SleepRecordRepository:
 
         raise ValueError(f"Registro {registro.id_registro} no encontrado para actualizar.")
 
-    def delete(self, id_registro: int, id_usuario: int) -> bool:
+    def delete(self, id_registro: int, id_usuario: str) -> bool:
         """Elimina un registro de sueño propio del usuario (RF09)."""
         if self.client is not None:
             response = (
                 self.client.table(self._table_name)
                 .delete()
                 .eq("id_registro", id_registro)
-                .eq("id_usuario", id_usuario)
+                .eq("id_usuario", str(id_usuario))
                 .execute()
             )
             return bool(response and response.data)
 
         if id_registro in self._in_memory_db:
-            if self._in_memory_db[id_registro]["id_usuario"] == id_usuario:
+            if str(self._in_memory_db[id_registro]["id_usuario"]) == str(id_usuario):
                 del self._in_memory_db[id_registro]
                 return True
         return False
 
-    def list_by_user(self, id_usuario: int) -> list[RegistroSueno]:
+    def list_by_user(self, id_usuario: str) -> list[RegistroSueno]:
         """Lista todos los registros de sueño de un usuario ordenados por fecha descendente (RF03, RNF08)."""
         if self.client is not None:
             response = (
                 self.client.table(self._table_name)
                 .select("*")
-                .eq("id_usuario", id_usuario)
+                .eq("id_usuario", str(id_usuario))
                 .order("fecha", desc=True)
                 .execute()
             )
@@ -213,5 +213,5 @@ class SleepRecordRepository:
                 key=lambda r: r["fecha"],
                 reverse=True,
             )
-            if row["id_usuario"] == id_usuario
+            if str(row["id_usuario"]) == str(id_usuario)
         ]

@@ -47,7 +47,7 @@ def test_row_to_model_handles_string_and_native_types():
 
     row_strings = {
         "id_registro": 10,
-        "id_usuario": 1,
+        "id_usuario": "00000000-0000-0000-0000-000000000001",
         "fecha": "2026-10-07",
         "hora_acostarse": "22:30:00",
         "hora_despertar": "06:30:00",
@@ -56,7 +56,7 @@ def test_row_to_model_handles_string_and_native_types():
     }
     modelo = repo._row_to_model(row_strings)
     assert modelo.id_registro == 10
-    assert modelo.id_usuario == 1
+    assert modelo.id_usuario == "00000000-0000-0000-0000-000000000001"
     assert modelo.fecha == date(2026, 10, 7)
     assert modelo.hora_acostarse == time(22, 30)
     assert modelo.hora_despertar == time(6, 30)
@@ -74,7 +74,7 @@ def test_repository_with_real_supabase_client_create_and_get():
     mock_table.insert.return_value.execute.return_value.data = [
         {
             "id_registro": 42,
-            "id_usuario": 1,
+            "id_usuario": "00000000-0000-0000-0000-000000000001",
             "fecha": "2026-10-07",
             "hora_acostarse": "23:00:00",
             "hora_despertar": "07:00:00",
@@ -86,7 +86,7 @@ def test_repository_with_real_supabase_client_create_and_get():
     repo = SleepRecordRepository(client=mock_client)
     nuevo_registro = RegistroSueno(
         id_registro=None,
-        id_usuario=1,
+        id_usuario="00000000-0000-0000-0000-000000000001",
         fecha=date(2026, 10, 7),
         hora_acostarse=time(23, 0),
         hora_despertar=time(7, 0),
@@ -109,7 +109,7 @@ def test_repository_handles_supabase_unique_violation_rn01():
     # Simular que get_by_user_and_date encuentra el ID previo
     mock_table.select.return_value.eq.return_value.eq.return_value.maybe_single.return_value.execute.return_value.data = {
         "id_registro": 99,
-        "id_usuario": 1,
+        "id_usuario": "00000000-0000-0000-0000-000000000001",
         "fecha": "2026-10-07",
         "hora_acostarse": "22:00:00",
         "hora_despertar": "06:00:00",
@@ -121,7 +121,7 @@ def test_repository_handles_supabase_unique_violation_rn01():
     raw_error = {
         "message": 'duplicate key value violates unique constraint "uq_registros_sueno_usuario_fecha"',
         "code": "23505",
-        "details": "Key (id_usuario, fecha)=(1, 2026-10-07) already exists.",
+        "details": "Key (id_usuario, fecha)=(00000000-0000-0000-0000-000000000001, 2026-10-07) already exists.",
         "hint": None,
     }
     mock_table.insert.return_value.execute.side_effect = APIError(raw_error)
@@ -129,7 +129,7 @@ def test_repository_handles_supabase_unique_violation_rn01():
     repo = SleepRecordRepository(client=mock_client)
     registro_duplicado = RegistroSueno(
         id_registro=None,
-        id_usuario=1,
+        id_usuario="00000000-0000-0000-0000-000000000001",
         fecha=date(2026, 10, 7),
         hora_acostarse=time(23, 0),
         hora_despertar=time(7, 0),
@@ -157,7 +157,7 @@ def test_repository_delete_and_list():
     mock_table.select.return_value.eq.return_value.order.return_value.execute.return_value.data = [
         {
             "id_registro": 1,
-            "id_usuario": 1,
+            "id_usuario": "00000000-0000-0000-0000-000000000001",
             "fecha": "2026-10-07",
             "hora_acostarse": "23:00:00",
             "hora_despertar": "07:00:00",
@@ -167,9 +167,9 @@ def test_repository_delete_and_list():
     ]
 
     repo = SleepRecordRepository(client=mock_client)
-    eliminado = repo.delete(id_registro=1, id_usuario=1)
+    eliminado = repo.delete(id_registro=1, id_usuario="00000000-0000-0000-0000-000000000001")
     assert eliminado is True
 
-    lista = repo.list_by_user(id_usuario=1)
+    lista = repo.list_by_user(id_usuario="00000000-0000-0000-0000-000000000001")
     assert len(lista) == 1
     assert lista[0].id_registro == 1

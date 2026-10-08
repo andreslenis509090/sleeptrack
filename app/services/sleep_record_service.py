@@ -31,7 +31,7 @@ class SleepRecordService:
 
     def create_sleep_record(
         self,
-        id_usuario: int,
+        id_usuario: str,
         data: SleepRecordCreate,
         now: datetime | None = None,
     ) -> RegistroSueno:
@@ -88,7 +88,7 @@ class SleepRecordService:
     def update_sleep_record(
         self,
         id_registro: int,
-        id_usuario: int,
+        id_usuario: str,
         data: SleepRecordUpdate,
         now: datetime | None = None,
     ) -> RegistroSueno:
@@ -132,7 +132,7 @@ class SleepRecordService:
         return self.repository.update(registro)
 
     def get_sleep_record_by_date(
-        self, id_usuario: int, fecha: date
+        self, id_usuario: str, fecha: date
     ) -> RegistroSueno | None:
         """Consulta si existe un registro en una fecha específica (RF08, RN01)."""
         return self.repository.get_by_user_and_date(
@@ -140,7 +140,7 @@ class SleepRecordService:
         )
 
     def get_sleep_record_by_id(
-        self, id_registro: int, id_usuario: int
+        self, id_registro: int, id_usuario: str
     ) -> RegistroSueno:
         """Obtiene un registro por ID o lanza SleepRecordNotFoundError."""
         registro = self.repository.get_by_id(

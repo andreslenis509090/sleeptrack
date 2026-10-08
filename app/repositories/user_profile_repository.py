@@ -15,8 +15,14 @@ from app.models.user_profile import PerfilUsuario
 class UserProfileRepository:
     """Repositorio para la entidad PerfilUsuario."""
 
-    def __init__(self, client: Client | None = None) -> None:
+    def __init__(self, client: Client | None = None, is_test_mode: bool = False) -> None:
+        if client is None and not is_test_mode:
+            raise RuntimeError(
+                "Credenciales de Supabase no configuradas. Defina SUPABASE_URL y SUPABASE_KEY en .env "
+                "o habilite el modo de pruebas con TESTING=true."
+            )
         self.client = client
+        self.is_test_mode = is_test_mode
         self._table_name = "perfiles_usuario"
         # Almacenamiento fallback en memoria para pruebas sin conexión a Supabase
         self._in_memory_db: dict[str, dict[str, Any]] = {}

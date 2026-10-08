@@ -86,7 +86,7 @@ class SleepRecordResponse(BaseModel):
     )
 
     id_registro: int = Field(..., alias="idRegistro")
-    id_usuario: int = Field(..., alias="idUsuario")
+    id_usuario: str = Field(..., alias="idUsuario")
     fecha: date
     hora_acostarse: time = Field(..., alias="horaAcostarse")
     hora_despertar: time = Field(..., alias="horaDespertar")

@@ -28,10 +28,16 @@ class AuthService:
         self,
         client: Client | None,
         profile_repo: UserProfileRepository,
+        is_test_mode: bool = False,
     ) -> None:
+        if client is None and not is_test_mode:
+            raise RuntimeError(
+                "Credenciales de Supabase no configuradas. Defina SUPABASE_URL y SUPABASE_KEY en .env "
+                "o habilite el modo de pruebas con TESTING=true."
+            )
         self.client = client
         self.profile_repo = profile_repo
-        self._test_mode = client is None
+        self._test_mode = is_test_mode
         # Almacenamiento en memoria para modo de pruebas sin Supabase
         self._test_users: dict[str, dict] = {}  # email -> {id, email, password}
         self._test_tokens: dict[str, str] = {}  # token -> user_id

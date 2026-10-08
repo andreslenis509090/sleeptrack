@@ -11,12 +11,14 @@ Verifica cumplimiento de:
 from datetime import date, datetime, time, timedelta
 import pytest
 from fastapi.testclient import TestClient
-from app.api.dependencies import get_sleep_record_service
+from app.api.dependencies import get_current_user_id, get_sleep_record_service
 from app.core.exceptions import FutureSleepTimeError
 from app.main import app
 from app.models.sleep_record import RegistroSueno
 from app.repositories.sleep_record_repository import SleepRecordRepository
 from app.services.sleep_record_service import SleepRecordService
+
+TEST_USER_ID = "00000000-0000-0000-0000-000000000001"
 
 
 @pytest.fixture
@@ -33,8 +35,9 @@ def service(repo):
 
 @pytest.fixture
 def client(repo, service):
-    """Provee un TestClient de FastAPI con repositorio y servicio aislados."""
+    """Provee un TestClient de FastAPI con repositorio, servicio y usuario autenticado simulado."""
     app.dependency_overrides[get_sleep_record_service] = lambda: service
+    app.dependency_overrides[get_current_user_id] = lambda: TEST_USER_ID
     yield TestClient(app)
     app.dependency_overrides.clear()
 
@@ -299,4 +302,27 @@ def test_crear_registro_sueno_limite_ahora_mismo_rn02(client):
     response = client.post("/api/v1/sleep-records", json=payload)
     # Debe ser aceptado (no es futuro) y retornar 201
     assert response.status_code == 201
+
+
+def test_rn01_permite_misma_fecha_para_usuarios_distintos(service):
+    """RN01: La restricción de unicidad es por usuario: dos usuarios pueden registrar la misma fecha."""
+    user_1 = "00000000-0000-0000-0000-000000000001"
+    user_2 = "00000000-0000-0000-0000-000000000002"
+    fecha = date(2026, 10, 5)
+
+    payload_1 = {
+        "fecha": fecha.isoformat(),
+        "horaAcostarse": "22:00",
+        "horaDespertar": "06:00",
+        "calificacion": 4,
+    }
+    from app.schemas.sleep_record import SleepRecordCreate
+    reg1 = service.create_sleep_record(id_usuario=user_1, data=SleepRecordCreate(**payload_1))
+    assert reg1.id_usuario == user_1
+
+    # Usuario 2 registra la misma fecha: debe permitirse exitosamente
+    reg2 = service.create_sleep_record(id_usuario=user_2, data=SleepRecordCreate(**payload_1))
+    assert reg2.id_usuario == user_2
+    assert reg2.fecha == fecha
+
 

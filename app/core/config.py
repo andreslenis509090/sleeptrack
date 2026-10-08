@@ -27,6 +27,12 @@ class Settings:
     supabase_url: str = os.getenv("SUPABASE_URL", "")
     supabase_key: str = os.getenv("SUPABASE_KEY", "")
     environment: str = os.getenv("ENVIRONMENT", "development")
+    testing: bool = os.getenv("TESTING", "").lower() in ("true", "1", "yes")
+
+    @property
+    def is_testing_mode(self) -> bool:
+        """Determina si la aplicación se ejecuta explícitamente en modo de pruebas."""
+        return self.testing or self.environment.lower() == "test"
 
     @property
     def is_supabase_configured(self) -> bool:
