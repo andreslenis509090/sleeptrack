@@ -1,69 +1,120 @@
 """Inyección de dependencias para FastAPI (Auth, Repositorios, Servicios).
 
-Cumple con RNF02 (Autenticación y sesiones de usuario) e inyección desacoplada.
-Conecta el cliente oficial de Supabase con el repositorio en la nube (RNF04).
+Cumple con RNF02 (Autenticación con sesiones y expiración) e inyección desacoplada.
+Conecta el cliente oficial de Supabase con los repositorios en la nube (RNF04).
 """
 
 from typing import Annotated
+
 from fastapi import Depends, Header, HTTPException, status
 from supabase import Client
+
 from app.core.config import get_supabase_client
+from app.core.exceptions import InvalidTokenError
 from app.repositories.sleep_record_repository import SleepRecordRepository
+from app.repositories.user_profile_repository import UserProfileRepository
+from app.services.auth_service import AuthService
 from app.services.sleep_record_service import SleepRecordService
 
-# Instancia singleton para fallback de persistencia en memoria durante desarrollo/pruebas locales
-_in_memory_repository = SleepRecordRepository(client=None)
 _cached_supabase_client: Client | None = None
+_client_initialized: bool = False
 
 
-def get_current_user_id(
-    authorization: Annotated[str | None, Header()] = None,
-) -> int:
-    """Extrae y valida el usuario autenticado a partir del header de autorización (RNF02).
+def _get_supabase_client() -> Client | None:
+    """Obtiene el cliente Supabase (singleton con inicialización perezosa)."""
+    global _cached_supabase_client, _client_initialized
+    if not _client_initialized:
+        _cached_supabase_client = get_supabase_client()
+        _client_initialized = True
+    return _cached_supabase_client
 
-    En producción valida el token JWT con expiración.
-    Para pruebas y entorno de desarrollo, admite tokens de formato 'Bearer user-<id>'
-    o por defecto el usuario con ID 1.
-    """
-    if authorization is None:
-        # Modo por defecto para pruebas de desarrollo local
-        return 1
 
-    if not authorization.startswith("Bearer "):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Encabezado de autorización inválido. Formato esperado: Bearer <token>",
-        )
+# ============================================================================
+# Repositorios
+# ============================================================================
 
-    token = authorization.replace("Bearer ", "").strip()
-    if token.startswith("user-"):
-        try:
-            return int(token.split("-")[1])
-        except (ValueError, IndexError):
-            pass
 
-    return 1
+def get_user_profile_repository() -> UserProfileRepository:
+    """Provee el repositorio de perfiles de usuario conectado a Supabase (RNF04)."""
+    client = _get_supabase_client()
+    return UserProfileRepository(client=client)
 
 
 def get_sleep_record_repository() -> SleepRecordRepository:
-    """Provee la instancia del repositorio de registros de sueño conectado a Supabase (RNF04).
+    """Provee el repositorio de registros de sueño conectado a Supabase (RNF04)."""
+    client = _get_supabase_client()
+    return SleepRecordRepository(client=client)
 
-    Si las credenciales de Supabase están configuradas en .env o variables de entorno,
-    instancia el repositorio con el cliente real de Supabase. Si no están configuradas,
-    recorre al repositorio en memoria para desarrollo local aislado.
-    """
-    global _cached_supabase_client
-    if _cached_supabase_client is None:
-        _cached_supabase_client = get_supabase_client()
 
-    if _cached_supabase_client is not None:
-        return SleepRecordRepository(client=_cached_supabase_client)
+# ============================================================================
+# Servicios
+# ============================================================================
 
-    return _in_memory_repository
+
+def get_auth_service(
+    profile_repo: Annotated[UserProfileRepository, Depends(get_user_profile_repository)],
+) -> AuthService:
+    """Provee el servicio de autenticación con Supabase Auth (RF01, RF02, RNF01, RNF02)."""
+    client = _get_supabase_client()
+    return AuthService(client=client, profile_repo=profile_repo)
 
 
 def get_sleep_record_service(
     repository: Annotated[SleepRecordRepository, Depends(get_sleep_record_repository)],
 ) -> SleepRecordService:
-    """Provee la instancia de la capa de servicio con el repositorio inyectado."""
+    """Provee la instancia de la capa de servicio de registros de sueño."""
     return SleepRecordService(repository=repository)
+
+
+# ============================================================================
+# Autenticación (RNF02)
+# ============================================================================
+
+
+def get_current_user_id(
+    authorization: Annotated[str | None, Header()] = None,
+    auth_service: Annotated[AuthService, Depends(get_auth_service)] = None,
+) -> str:
+    """Extrae y valida el usuario autenticado a partir del header Authorization (RNF02).
+
+    Requiere un token Bearer válido de Supabase Auth.
+    Retorna el UUID (str) del usuario autenticado.
+    """
+    if authorization is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={
+                "message": "Se requiere autenticación. Incluya el header Authorization: Bearer <token>.",
+                "code": "MISSING_TOKEN",
+            },
+        )
+
+    if not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={
+                "message": "Formato de autorización inválido. Use: Bearer <token>.",
+                "code": "INVALID_TOKEN_FORMAT",
+            },
+        )
+
+    token = authorization[7:].strip()
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={
+                "message": "Token vacío.",
+                "code": "EMPTY_TOKEN",
+            },
+        )
+
+    try:
+        return auth_service.get_user_id_from_token(token)
+    except InvalidTokenError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={
+                "message": "Token de sesión inválido o expirado.",
+                "code": "INVALID_TOKEN",
+            },
+        )

@@ -52,3 +52,33 @@ class InvalidSleepDataError(DomainError):
     def __init__(self, message: str, field: str | None = None) -> None:
         super().__init__(message, code="INVALID_SLEEP_DATA")
         self.field = field
+
+
+class AuthenticationError(DomainError):
+    """Lanzada cuando las credenciales de autenticación son inválidas (RF02)."""
+
+    def __init__(
+        self,
+        message: str = "Correo o contraseña incorrectos.",
+    ) -> None:
+        super().__init__(message, code="INVALID_CREDENTIALS")
+
+
+class UserAlreadyExistsError(DomainError):
+    """Lanzada cuando el correo ya está registrado (RF01)."""
+
+    def __init__(
+        self,
+        message: str = "Ya existe un usuario registrado con este correo electrónico.",
+    ) -> None:
+        super().__init__(message, code="USER_ALREADY_EXISTS")
+
+
+class InvalidTokenError(DomainError):
+    """Lanzada cuando el token de sesión es inválido o ha expirado (RNF02)."""
+
+    def __init__(
+        self,
+        message: str = "Token de sesión inválido o expirado.",
+    ) -> None:
+        super().__init__(message, code="INVALID_TOKEN")

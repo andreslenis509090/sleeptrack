@@ -46,7 +46,7 @@ router = APIRouter(
 def create_sleep_record(
     payload: SleepRecordCreate,
     service: Annotated[SleepRecordService, Depends(get_sleep_record_service)],
-    user_id: Annotated[int, Depends(get_current_user_id)],
+    user_id: Annotated[str, Depends(get_current_user_id)],
 ) -> SleepRecordResponse:
     """Crea un registro de sueño diario.
 
