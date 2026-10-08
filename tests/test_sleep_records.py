@@ -326,3 +326,53 @@ def test_rn01_permite_misma_fecha_para_usuarios_distintos(service):
     assert reg2.fecha == fecha
 
 
+def test_eliminar_registro_sueno_propio_exitoso_rf09(client):
+    """RF09: Un usuario puede eliminar exitosamente un registro de sueño propio (204 No Content)."""
+    # 1. Crear un registro
+    res_crear = client.post(
+        "/api/v1/sleep-records",
+        json={
+            "fecha": "2026-10-02",
+            "horaAcostarse": "22:00",
+            "horaDespertar": "06:00",
+            "calificacion": 4,
+        },
+    )
+    assert res_crear.status_code == 201
+    id_registro = res_crear.json()["idRegistro"]
+
+    # 2. Eliminar el registro propio
+    res_del = client.delete(f"/api/v1/sleep-records/{id_registro}")
+    assert res_del.status_code == 204
+
+    # 3. Verificar que ya no existe (404 al consultar por fecha)
+    res_check = client.get("/api/v1/sleep-records/by-date/2026-10-02")
+    assert res_check.status_code == 404
+
+
+def test_eliminar_registro_sueno_ajeno_o_inexistente_retorna_404_rf09(client, service):
+    """RF09: Un usuario no puede borrar registros de otro usuario; debe retornar 404 Not Found (no 403)."""
+    # 1. Crear un registro para otro usuario directamente en el servicio
+    from app.schemas.sleep_record import SleepRecordCreate
+    reg_ajeno = service.create_sleep_record(
+        id_usuario="otro-usuario-uuid-9999",
+        data=SleepRecordCreate(
+            fecha=date(2026, 10, 3),
+            hora_acostarse=time(23, 0),
+            hora_despertar=time(7, 0),
+            calificacion=3,
+        ),
+    )
+    id_registro_ajeno = reg_ajeno.id_registro
+
+    # 2. El usuario actual intenta eliminar el registro del otro usuario: debe retornar 404
+    res_del_ajeno = client.delete(f"/api/v1/sleep-records/{id_registro_ajeno}")
+    assert res_del_ajeno.status_code == 404
+    assert res_del_ajeno.json()["detail"]["code"] == "RECORD_NOT_FOUND"
+
+    # 3. Intentar eliminar un ID inexistente: debe retornar 404
+    res_del_inexistente = client.delete("/api/v1/sleep-records/999999")
+    assert res_del_inexistente.status_code == 404
+
+
+

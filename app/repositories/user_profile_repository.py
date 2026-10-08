@@ -29,13 +29,14 @@ class UserProfileRepository:
 
     def _row_to_model(self, row: dict[str, Any]) -> PerfilUsuario:
         """Convierte una fila de Supabase a entidad de dominio PerfilUsuario."""
+        meta_val = row.get("meta_sueno")
         return PerfilUsuario(
             id=str(row["id"]),
             email=str(row["email"]),
             nombre=str(row["nombre"]),
             apellido=str(row["apellido"]),
             ocupacion=str(row["ocupacion"]),
-            meta_sueno=float(row["meta_sueno"]),
+            meta_sueno=float(meta_val) if meta_val is not None else None,
         )
 
     def create(self, profile: PerfilUsuario) -> PerfilUsuario:

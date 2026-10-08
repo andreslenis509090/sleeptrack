@@ -197,3 +197,35 @@ def update_sleep_record(
                 "field": exc.field,
             },
         ) from exc
+
+
+@router.delete(
+    "/{id_registro}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Eliminar un registro de sueño propio (RF09)",
+    responses={
+        204: {"description": "Registro de sueño eliminado exitosamente."},
+        401: {"description": "No autorizado. Token de sesión requerido."},
+        404: {"description": "Registro no encontrado o no pertenece al usuario autenticado."},
+    },
+)
+def delete_sleep_record(
+    id_registro: int,
+    service: Annotated[SleepRecordService, Depends(get_sleep_record_service)],
+    user_id: Annotated[str, Depends(get_current_user_id)],
+) -> None:
+    """Elimina un registro de sueño propio (RF09).
+
+    Si el registro no existe o pertenece a otro usuario, responde 404 Not Found
+    (nunca 403) para evitar fuga de información.
+    """
+    try:
+        service.delete_sleep_record(id_registro=id_registro, id_usuario=user_id)
+    except SleepRecordNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "message": exc.message,
+                "code": exc.code,
+            },
+        ) from exc

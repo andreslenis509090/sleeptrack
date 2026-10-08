@@ -141,6 +141,37 @@ class AuthService:
 
         return user_response.user.id
 
+    def delete_user(self, user_id: str) -> None:
+        """Elimina la cuenta del usuario en Supabase Auth y en cascada todos sus datos (RF10).
+
+        Requiere clave service_role en el cliente Supabase para ejecutar auth.admin.delete_user.
+        Al eliminarse en auth.users, PostgreSQL desencadena la eliminación en cascada
+        sobre perfiles_usuario y registros_sueno gracias a ON DELETE CASCADE.
+        """
+        if self._test_mode:
+            # Modo test en memoria
+            self.profile_repo.delete(user_id)
+            # Limpiar test users y tokens asociados
+            user_email = None
+            for email, data in self._test_users.items():
+                if data["id"] == user_id:
+                    user_email = email
+                    break
+            if user_email:
+                del self._test_users[user_email]
+            tokens_to_del = [t for t, uid in self._test_tokens.items() if uid == user_id]
+            for t in tokens_to_del:
+                del self._test_tokens[t]
+            return
+
+        # Producción con Supabase Client
+        try:
+            self.client.auth.admin.delete_user(user_id)
+        except Exception as exc:
+            # Fallback en caso de que las políticas RLS o supabase requieran borrar perfil primero
+            self.profile_repo.delete(user_id)
+            raise RuntimeError(f"Error al eliminar usuario en Supabase Auth: {exc}") from exc
+
     # --- Métodos internos para modo de pruebas ---
 
     def _register_test(

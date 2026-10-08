@@ -151,3 +151,32 @@ class SleepRecordService:
                 f"No se encontró el registro de sueño con ID {id_registro}."
             )
         return registro
+
+    def delete_sleep_record(self, id_registro: int, id_usuario: str) -> None:
+        """Elimina un registro de sueño propio del usuario (RF09).
+
+        Si el registro no existe o no pertenece al usuario autenticado,
+        lanza SleepRecordNotFoundError para que el router responda 404 Not Found.
+        """
+        # Verificar existencia y pertenencia
+        registro = self.repository.get_by_id(
+            id_registro=id_registro, id_usuario=id_usuario
+        )
+        if registro is None:
+            raise SleepRecordNotFoundError(
+                f"No se encontró el registro de sueño con ID {id_registro}."
+            )
+
+        eliminado = self.repository.delete(id_registro=id_registro, id_usuario=id_usuario)
+        if not eliminado:
+            raise SleepRecordNotFoundError(
+                f"No se pudo eliminar el registro de sueño con ID {id_registro}."
+            )
+
+    def get_records_by_date_range(
+        self, id_usuario: str, fecha_inicio: date, fecha_fin: date
+    ) -> list[RegistroSueno]:
+        """Obtiene los registros de un usuario en un rango de fechas (RF11, RF13)."""
+        return self.repository.get_by_date_range(
+            id_usuario=id_usuario, fecha_inicio=fecha_inicio, fecha_fin=fecha_fin
+        )

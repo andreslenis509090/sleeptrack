@@ -215,3 +215,32 @@ class SleepRecordRepository:
             )
             if str(row["id_usuario"]) == str(id_usuario)
         ]
+
+    def get_by_date_range(
+        self, id_usuario: str, fecha_inicio: date, fecha_fin: date
+    ) -> list[RegistroSueno]:
+        """Obtiene los registros de un usuario comprendidos en un rango de fechas [inicio, fin] (RF11, RF13)."""
+        if self.client is not None:
+            response = (
+                self.client.table(self._table_name)
+                .select("*")
+                .eq("id_usuario", str(id_usuario))
+                .gte("fecha", str(fecha_inicio))
+                .lte("fecha", str(fecha_fin))
+                .order("fecha", desc=False)
+                .execute()
+            )
+            if response and response.data:
+                return [self._row_to_model(row) for row in response.data]
+            return []
+
+        # Fallback en memoria para tests
+        registros = []
+        for row in self._in_memory_db.values():
+            if str(row["id_usuario"]) == str(id_usuario):
+                fecha_val = row["fecha"]
+                if isinstance(fecha_val, str):
+                    fecha_val = date.fromisoformat(fecha_val)
+                if fecha_inicio <= fecha_val <= fecha_fin:
+                    registros.append(self._row_to_model(row))
+        return sorted(registros, key=lambda r: r.fecha)

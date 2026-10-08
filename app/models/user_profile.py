@@ -17,4 +17,4 @@ class PerfilUsuario:
     nombre: str
     apellido: str
     ocupacion: str
-    meta_sueno: float
+    meta_sueno: float | None = None

@@ -177,3 +177,70 @@ def test_modo_produccion_falla_si_faltan_variables_supabase():
     with pytest.raises(RuntimeError) as exc_info_repo:
         UserProfileRepository(client=None, is_test_mode=False)
     assert "Credenciales de Supabase no configuradas" in str(exc_info_repo.value)
+
+
+def test_eliminar_cuenta_propia_requiere_confirmacion_explicita_rf10(client):
+    """RF10: DELETE /users/me sin confirmar=true debe retornar 400 Bad Request."""
+    reg = client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": "del.sin.confirmar@universidad.edu",
+            "password": "Password123",
+            "nombre": "Pedro",
+            "apellido": "Guerra",
+            "ocupacion": "Estudiante",
+        },
+    ).json()
+    token = reg["accessToken"]
+
+    # 1. Petición sin el parámetro confirmar
+    res_no_param = client.delete(
+        "/api/v1/users/me",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res_no_param.status_code == 400
+    assert res_no_param.json()["detail"]["code"] == "CONFIRMATION_REQUIRED"
+
+    # 2. Petición con confirmar=false
+    res_false = client.delete(
+        "/api/v1/users/me?confirmar=false",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res_false.status_code == 400
+
+
+def test_eliminar_cuenta_propia_exitoso_rf10(client, auth_repo):
+    """RF10: DELETE /users/me?confirmar=true elimina la cuenta y perfil (204 No Content)."""
+    # 1. Registrar usuario
+    reg = client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": "eliminar.exitoso@universidad.edu",
+            "password": "Password123",
+            "nombre": "Sara",
+            "apellido": "Duque",
+            "ocupacion": "Médico",
+        },
+    ).json()
+    token = reg["accessToken"]
+    user_id = reg["user"]["id"]
+
+    # Verificar que el perfil existe
+    assert auth_repo.get_by_id(user_id) is not None
+
+    # 2. Eliminar cuenta con confirmación
+    res_del = client.delete(
+        "/api/v1/users/me?confirmar=true",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res_del.status_code == 204
+
+    # 3. Verificar que el perfil fue eliminado
+    assert auth_repo.get_by_id(user_id) is None
+
+    # 4. El token ahora debe ser inválido para futuras peticiones
+    res_after = client.delete(
+        "/api/v1/users/me?confirmar=true",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res_after.status_code == 401

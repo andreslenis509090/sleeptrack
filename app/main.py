@@ -7,7 +7,9 @@ from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from app.api.routers.auth_router import router as auth_router
+from app.api.routers.metrics_router import router as metrics_router
 from app.api.routers.sleep_records_router import router as sleep_records_router
+from app.api.routers.users_router import router as users_router
 from app.core.config import settings
 
 app = FastAPI(
@@ -48,8 +50,14 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 # Registrar router del módulo de autenticación (RF01, RF02, RNF01, RNF02)
 app.include_router(auth_router, prefix=settings.api_prefix)
 
+# Registrar router del módulo de usuarios y cuenta (RF01, RF10)
+app.include_router(users_router, prefix=settings.api_prefix)
+
 # Registrar router del módulo de registros de sueño (HU1, RF03-RF09)
 app.include_router(sleep_records_router, prefix=settings.api_prefix)
+
+# Registrar router del módulo de métricas semanales (HU2, RF11-RF14, RN03)
+app.include_router(metrics_router, prefix=settings.api_prefix)
 
 
 @app.get("/health", tags=["Health"])

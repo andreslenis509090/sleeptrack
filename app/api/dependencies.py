@@ -14,6 +14,7 @@ from app.core.exceptions import InvalidTokenError
 from app.repositories.sleep_record_repository import SleepRecordRepository
 from app.repositories.user_profile_repository import UserProfileRepository
 from app.services.auth_service import AuthService
+from app.services.metrics_service import MetricsService
 from app.services.sleep_record_service import SleepRecordService
 
 _cached_supabase_client: Client | None = None
@@ -68,6 +69,14 @@ def get_sleep_record_service(
 ) -> SleepRecordService:
     """Provee la instancia de la capa de servicio de registros de sueño."""
     return SleepRecordService(repository=repository)
+
+
+def get_metrics_service(
+    sleep_repo: Annotated[SleepRecordRepository, Depends(get_sleep_record_repository)],
+    profile_repo: Annotated[UserProfileRepository, Depends(get_user_profile_repository)],
+) -> MetricsService:
+    """Provee la instancia del servicio de métricas semanales (RF11-RF14, RN03)."""
+    return MetricsService(sleep_repo=sleep_repo, profile_repo=profile_repo)
 
 
 # ============================================================================
