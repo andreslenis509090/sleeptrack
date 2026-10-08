@@ -23,15 +23,18 @@ Se implementó el backend del **Módulo de Registro de Sueño (HU1)** cumpliendo
 ### 1.2 Archivos del Código Fuente
 - `app/main.py`: Punto de entrada FastAPI, configuración de prefijo `/api/v1`, documentación OpenAPI y middleware de estandarización de errores de validación 422.
 - `app/api/routers/sleep_records_router.py`: APIRouter con los endpoints HTTP de registros de sueño, inyección de dependencias y mapeo de excepciones de dominio a códigos de estado HTTP.
-- `app/api/dependencies.py`: Inyección de dependencias con `Depends()` para autenticación/sesión (`get_current_user_id`), repositorio (`get_sleep_record_repository`) y servicio (`get_sleep_record_service`).
+- `app/api/dependencies.py`: Inyección de dependencias con `Depends()` para autenticación/sesión (`get_current_user_id`), repositorio conectado a Supabase (`get_sleep_record_repository`) y servicio (`get_sleep_record_service`).
 - `app/services/sleep_record_service.py`: Capa de lógica de negocio pura. Aplica RN01, RN02, orquesta cálculos RF04, valida RF06/RF08 y lanza excepciones de dominio tipadas sin acoplamiento a FastAPI.
-- `app/repositories/sleep_record_repository.py`: Capa de persistencia para Supabase (PostgreSQL en la nube). Métodos `get_by_user_and_date`, `get_by_id`, `create` y `update`.
+- `app/repositories/sleep_record_repository.py`: Capa de persistencia conectada a Supabase (PostgreSQL en la nube, RNF04). Soporta operaciones `create`, `update`, `get_by_id`, `get_by_user_and_date`, `delete` y `list_by_user`. Captura el error de clave duplicada PostgreSQL 23505 mapeándolo a `SleepRecordAlreadyExistsError` (RN01) y conserva fallback para tests unitarios offline.
 - `app/models/sleep_record.py`: Entidad de dominio `RegistroSueno` con métodos estáticos `calcular_duracion()` (RF04) y `validar_hora_futura()` (RF05, RN02).
 - `app/schemas/sleep_record.py`: DTOs Pydantic v2 (`SleepRecordCreate`, `SleepRecordUpdate`, `SleepRecordResponse`, `SleepRecordConflictResponse`, `StandardErrorResponse`) con soporte simultáneo para camelCase y snake_case.
 - `app/core/exceptions.py`: Jerarquía de excepciones de dominio (`SleepRecordAlreadyExistsError`, `FutureSleepTimeError`, `SleepRecordNotFoundError`, `InvalidSleepDataError`, `DomainError`).
-- `app/core/config.py`: Configuración de variables de entorno (`SUPABASE_URL`, `SUPABASE_KEY`) y fábrica de cliente Supabase.
-- `tests/test_sleep_records.py`: Suite de 14 pruebas automatizadas (unitarias y de integración con TestClient).
-- `requirements.txt`: Dependencias del proyecto (`fastapi`, `uvicorn`, `pydantic`, `supabase`, `python-dateutil`, `pytest`, `httpx`).
+- `app/core/config.py`: Configuración de variables de entorno (`SUPABASE_URL`, `SUPABASE_KEY`), carga automática con `python-dotenv`, detección de credenciales reales y fábrica de cliente Supabase.
+- `supabase/schema_registros_sueno.sql`: Script DDL SQL para Supabase con tablas `usuarios` y `registros_sueno`, restricción única `uq_registros_sueno_usuario_fecha` (RN01), índices para rendimiento (RNF08), triggers y políticas RLS.
+- `.env.example`: Plantilla de variables de entorno sin valores reales.
+- `tests/test_sleep_records.py`: Suite de 14 pruebas de dominio y endpoints con TestClient.
+- `tests/test_sleep_repository.py`: Suite de 5 pruebas unitarias para `SleepRecordRepository`, conversión de tipos, captura de error 23505 y detección de configuración en `Settings`.
+- `requirements.txt`: Dependencias del proyecto actualizadas con `python-dotenv>=1.0.0`.
 
 ---
 
@@ -89,7 +92,8 @@ Basado estrictamente en los requisitos del informe técnico (`docs/informe3.md`)
   - Depuración manual de registros con registro de auditoría (`DELETE /api/v1/admin/sleep-records/{id_registro}`).
   - Exportación de respaldos cifrados del sistema (`GET /api/v1/admin/backup/export`).
 - **Base de Datos Supabase:**
-  - Creación y migración del esquema relacional DDL en Supabase Cloud (`usuarios`, `registros_sueno`, `alertas`, `auditoria`).
+  - Esquema relacional DDL de `usuarios` y `registros_sueno` completado en `supabase/schema_registros_sueno.sql` con restricción única RN01 (`uq_registros_sueno_usuario_fecha`), índices RNF08 y políticas RLS.
+  - Pendiente migración DDL para los módulos restantes (`alertas`, `auditoria`).
 
 ### 3.2 Cliente Móvil / Web
 - Implementación de pantallas e interfaces para Estudiantes/Trabajadores (HU1 a HU3) y Administradores (HU4).
